@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Splice · TA Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F7F8FA;--surface:#FFFFFF;--border:#E4E7EC;--border2:#D0D5DD;
+  --text:#101828;--text2:#475467;--text3:#98A2B3;
+  --blue:#0033FF;--blue-soft:rgba(0,51,255,0.08);--blue-mid:rgba(0,51,255,0.15);
+  --green:#027A48;--green-bg:#ECFDF3;--green-pill:#D1FADF;
+  --red:#B42318;--red-bg:#FEF3F2;--red-pill:#FECDCA;
+  --yellow:#B54708;--yellow-bg:#FFFAEB;--yellow-pill:#FEDF89;
+  --purple:#6941C6;--purple-bg:#F4F3FF;
+  --sidebar:220px;
+  --radius:10px;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;overflow-x:hidden;font-size:14px}
+
+/* SIDEBAR */
+#sidebar{width:var(--sidebar);min-width:var(--sidebar);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100}
+.sb-logo{padding:18px 16px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sb-logo-mark{width:32px;height:32px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#fff;letter-spacing:-1px;flex-shrink:0}
+.sb-logo-text{font-size:14px;font-weight:700;letter-spacing:-0.3px}
+.sb-logo-sub{font-size:10px;color:var(--text3);margin-top:1px;letter-spacing:.04em}
+.sb-nav{flex:1;padding:10px 0;overflow-y:auto}
+.sb-label{padding:8px 16px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-weight:500}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 14px;margin:1px 8px;border-radius:7px;cursor:pointer;font-size:13px;color:var(--text2);font-weight:500;transition:all .15s;user-select:none}
+.sb-item:hover{background:var(--bg);color:var(--text)}
+.sb-item.active{background:var(--blue-soft);color:var(--blue)}
+.sb-item svg{flex-shrink:0;opacity:.7}
+.sb-item.active svg{opacity:1}
+.sb-divider{height:1px;background:var(--border);margin:8px 16px}
+.sb-date{padding:10px 16px 16px;font-size:11px;color:var(--text3)}
+
+/* MAIN */
+#main{margin-left:var(--sidebar);flex:1;display:flex;flex-direction:column;min-height:100vh}
+
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 28px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50}
+.topbar-title{font-size:16px;font-weight:600;margin-right:auto;letter-spacing:-.3px}
+.dd-wrap{position:relative}
+.dd-btn{display:flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid var(--border2);border-radius:8px;background:var(--surface);cursor:pointer;font-size:12px;font-weight:500;color:var(--text2);white-space:nowrap;transition:all .15s}
+.dd-btn:hover{border-color:var(--blue);color:var(--blue)}
+.dd-btn.has-val{border-color:var(--blue);background:var(--blue-soft);color:var(--blue)}
+.dd-btn svg{transition:transform .2s}
+.dd-btn.open svg{transform:rotate(180deg)}
+.dd-list{position:absolute;top:calc(100% + 4px);left:0;min-width:170px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.1);z-index:200;overflow:hidden;display:none}
+.dd-list.show{display:block}
+.dd-opt{padding:9px 14px;font-size:12px;cursor:pointer;color:var(--text2);transition:background .1s}
+.dd-opt:hover{background:var(--bg)}
+.dd-opt.sel{color:var(--blue);font-weight:600}
+.filter-tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.atag{display:flex;align-items:center;gap:4px;padding:3px 8px;background:var(--blue-soft);color:var(--blue);border-radius:20px;font-size:11px;font-weight:500}
+.atx{cursor:pointer;font-size:12px;line-height:1;opacity:.7}
+.atx:hover{opacity:1}
+.clear-all{font-size:11px;color:var(--text3);cursor:pointer;padding:3px 6px;border-radius:5px}
+.clear-all:hover{color:var(--red)}
+
+/* CONTENT */
+.content{padding:24px 28px;flex:1}
+.section{display:none}
+.section.active{display:block}
+.sec-title{font-size:18px;font-weight:700;letter-spacing:-.4px;margin-bottom:4px}
+.sec-sub{font-size:13px;color:var(--text2);margin-bottom:20px}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:14px;margin-bottom:20px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;transition:box-shadow .2s}
+.kpi:hover{box-shadow:0 2px 12px rgba(0,0,0,.08)}
+.kpi-label{font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.kpi-value{font-size:26px;font-weight:700;letter-spacing:-1px;line-height:1;color:var(--text)}
+.kpi-value.blue{color:var(--blue)}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:5px}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+.grid-full{margin-bottom:16px}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.card-hd{padding:14px 18px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card-title{font-size:13px;font-weight:600;letter-spacing:-.2px}
+.card-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.card-body{padding:14px 18px}
+.chart-wrap{padding:12px 16px 16px;height:240px}
+.chart-wrap.tall{height:300px}
+.chart-wrap.sm{height:190px}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{padding:8px 14px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);background:var(--bg)}
+.tbl td{padding:9px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:#FAFBFC}
+.tbl td.name{color:var(--text);font-weight:500}
+.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.pill-green{background:var(--green-pill);color:var(--green)}
+.pill-red{background:var(--red-pill);color:var(--red)}
+.pill-yellow{background:var(--yellow-pill);color:var(--yellow)}
+.pill-blue{background:var(--blue-soft);color:var(--blue)}
+.pill-gray{background:#F2F4F7;color:var(--text2)}
+.pill-purple{background:var(--purple-bg);color:var(--purple)}
+
+/* HEADCOUNT CARD */
+.hc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--surface)}
+.hc-col{border-right:1px solid var(--border)}
+.hc-col:last-child{border-right:none}
+.hc-col-hd{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.hc-col-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.hc-col-ct{font-size:18px;font-weight:700;letter-spacing:-.5px}
+.hc-posted .hc-col-hd{background:#EBF3FF}
+.hc-posted .hc-col-label{color:#1849A9}
+.hc-posted .hc-col-ct{color:#1849A9}
+.hc-approved .hc-col-hd{background:#F4F3FF}
+.hc-approved .hc-col-label{color:#5925DC}
+.hc-approved .hc-col-ct{color:#5925DC}
+.hc-requested .hc-col-hd{background:#FFFAEB}
+.hc-requested .hc-col-label{color:#B54708}
+.hc-requested .hc-col-ct{color:#B54708}
+.hc-filled .hc-col-hd{background:#ECFDF3}
+.hc-filled .hc-col-label{color:#027A48}
+.hc-filled .hc-col-ct{color:#027A48}
+.hc-item{padding:8px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:2px}
+.hc-item:last-child{border-bottom:none}
+.hc-item-title{font-size:12px;font-weight:500;color:var(--text);line-height:1.3}
+.hc-item-hm{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:4px}
+.hc-item-hm .dot{width:5px;height:5px;border-radius:50%;background:var(--text3);display:inline-block;flex-shrink:0}
+.hc-item-meta{font-size:11px;color:var(--text3)}
+.hc-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:500}
+.hc-paused{background:#F2F4F7;color:var(--text2)}
+
+/* MISC */
+.no-data{text-align:center;padding:40px;color:var(--text3);font-size:13px}
+.badge-dot{display:inline-flex;align-items:center;gap:5px;font-size:12px}
+.badge-dot::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+.green{color:var(--green)}
+.red{color:var(--red)}
+.blue{color:var(--blue)}
+.muted{color:var(--text3)}
+.bold{font-weight:600}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-mark">S</div>
+    <div>
+      <div class="sb-logo-text">Splice TA</div>
+      <div class="sb-logo-sub">Dashboard</div>
+    </div>
+  </div>
+  <div class="sb-nav">
+    <div class="sb-label">Reports</div>
+    <div class="sb-item active" data-sec="overview" onclick="nav(this)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="9" y="1" width="6" height="6" rx="1.5" fill="currentColor" opacity=".5"/><rect x="1" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity=".5"/><rect x="9" y="9" width="6" height="6" rx="1.5" fill="currentColor"/></svg>
+      Overview
+    </div>
+    <div class="sb-item" data-sec="headcount" onclick="nav(this)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 13c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="6" cy="5" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 9.5c1.7.3 3 1.8 3 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="11" cy="5" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
+      Headcount
+    </div>
+    <div class="sb-item" data-sec="pipeline" onclick="nav(this)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3h10M3 8h7M3 13h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Pipeline
+    </div>
+    <div class="sb-item" data-sec="hires" onclick="nav(this)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M4 10l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Hires &amp; Speed
+    </div>
+    <div class="sb-item" data-sec="sources" onclick="nav(this)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 2c0 0 3 2.5 3 6s-3 6-3 6M8 2c0 0-3 2.5-3 6s3 6 3 6M2 8h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Candidate Sources
+    </div>
+    <div class="sb-item" data-sec="recruiters" onclick="nav(this)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M1 13c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="11" cy="5" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M10 10.5c.8-.3 1.8-.3 2.6 0M13 13h-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Recruiters
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-item" data-sec="turnover" onclick="nav(this)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 14V8M5 11l3 3 3-3M8 2v3M5 5l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Turnover
+    </div>
+    <div class="sb-item" data-sec="promotions" onclick="nav(this)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 14V2M5 5l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 10h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".5"/></svg>
+      Promotions
+    </div>
+    <div class="sb-item" data-sec="quality" onclick="nav(this)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3.5H13l-2.8 2 1 3.5L8 9.2 4.8 11l1-3.5L3 5.5h3.5L8 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      Quality of Hire
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-item" data-sec="insights" onclick="nav(this)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="7" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M8 11v3M6 14h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6.5 6.5C6.5 5.7 7.2 5 8 5s1.5.7 1.5 1.5c0 .6-.4 1.1-1 1.3V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Insights
+    </div>
+  </div>
+  <div class="sb-date" id="sb-date"></div>
+</nav>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Overview</div>
+
+    <!-- Year -->
+    <div class="dd-wrap" id="dd-yr">
+      <div class="dd-btn" id="btn-yr" onclick="toggleDD('yr')">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M1 6h12M5 1v3M9 1v3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <span id="lbl-yr">Year</span>
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
+      <div class="dd-list" id="list-yr">
+        <div class="dd-opt sel" onclick="setF('yr','All')">All Years</div>
+        <div class="dd-opt" onclick="setF('yr','2026')">2026</div>
+        <div class="dd-opt" onclick="setF('yr','2025')">2025</div>
+        <div class="dd-opt" onclick="setF('yr','2024')">2024</div>
+        <div class="dd-opt" onclick="setF('yr','2023')">2023</div>
+      </div>
+    </div>
+
+    <!-- Dept -->
+    <div class="dd-wrap" id="dd-dept">
+      <div class="dd-btn" id="btn-dept" onclick="toggleDD('dept')">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="5" y="1" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="1" y="9" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="9" y="9" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.4"/><path d="M3 9V7h8v2M7 5v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <span id="lbl-dept">Department</span>
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
+      <div class="dd-list" id="list-dept">
+        <div class="dd-opt sel" onclick="setF('dept','All')">All Departments</div>
+        <div class="dd-opt" onclick="setF('dept','Engineering')">Engineering</div>
+        <div class="dd-opt" onclick="setF('dept','Product')">Product</div>
+        <div class="dd-opt" onclick="setF('dept','Marketing')">Marketing</div>
+        <div class="dd-opt" onclick="setF('dept','Audio Development')">Audio Development</div>
+        <div class="dd-opt" onclick="setF('dept','People & Culture')">People &amp; Culture</div>
+        <div class="dd-opt" onclick="setF('dept','Finance & Operations')">Finance &amp; Operations</div>
+        <div class="dd-opt" onclick="setF('dept','Artist')">Artist</div>
+        <div class="dd-opt" onclick="setF('dept','Business Development')">Business Development</div>
+      </div>
+    </div>
+
+    <!-- Manager -->
+    <div class="dd-wrap" id="dd-hm">
+      <div class="dd-btn" id="btn-hm" onclick="toggleDD('hm')">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M1 13c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <span id="lbl-hm">Manager</span>
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
+      <div class="dd-list" id="list-hm">
+        <div class="dd-opt sel" onclick="setF('hm','All')">All Managers</div>
+        <div class="dd-opt" onclick="setF('hm','Ric Baker')">Ric Baker</div>
+        <div class="dd-opt" onclick="setF('hm','Roderick Begbie')">Roderick Begbie</div>
+        <div class="dd-opt" onclick="setF('hm','Paul Hammond')">Paul Hammond</div>
+        <div class="dd-opt" onclick="setF('hm','Ankur Patel')">Ankur Patel</div>
+        <div class="dd-opt" onclick="setF('hm','Mark Thomas')">Mark Thomas</div>
+        <div class="dd-opt" onclick="setF('hm','Jonjo Keefe')">Jonjo Keefe</div>
+        <div class="dd-opt" onclick="setF('hm','Lizbeth Velatini')">Lizbeth Velatini</div>
+      </div>
+    </div>
+
+    <!-- Recruiter -->
+    <div class="dd-wrap" id="dd-rec">
+      <div class="dd-btn" id="btn-rec" onclick="toggleDD('rec')">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="5" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M1 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="11" cy="5" r="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M10 10.5c.9-.3 1.9-.3 2.8 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <span id="lbl-rec">Recruiter</span>
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
+      <div class="dd-list" id="list-rec">
+        <div class="dd-opt sel" onclick="setF('rec','All')">All Recruiters</div>
+        <div class="dd-opt" onclick="setF('rec','Liz Velatini')">Liz Velatini</div>
+        <div class="dd-opt" onclick="setF('rec','Johnson George')">Johnson George</div>
+        <div class="dd-opt" onclick="setF('rec','Melissa Colon')">Melissa Colon</div>
+        <div class="dd-opt" onclick="setF('rec','Zlata Koshlina')">Zlata Koshlina</div>
+        <div class="dd-opt" onclick="setF('rec','Anne Sumethasorn')">Anne Sumethasorn</div>
+        <div class="dd-opt" onclick="setF('rec','Prince Kusi')">Prince Kusi</div>
+      </div>
+    </div>
+
+    <div class="filter-tags" id="filter-tags"></div>
+  </div>
+
+  <!-- ============ OVERVIEW ============ -->
+  <div class="content">
+  <div class="section active" id="section-overview">
+    <div class="sec-title" id="ov-title">2026 Snapshot</div>
+    <div class="sec-sub">Last updated June 1, 2026 · Hires ≤10 days excluded (contractor conversions)</div>
+
+    <!-- HEADCOUNT SUMMARY — shown first in overview -->
+    <div class="hc-grid" style="margin-bottom:20px">
+      <!-- POSTED -->
+      <div class="hc-col hc-posted">
+        <div class="hc-col-hd"><span class="hc-col-label">Posted Roles</span><span class="hc-col-ct">2</span></div>
+        <div class="hc-item">
+          <div class="hc-item-title">AP Specialist</div>
+          <div class="hc-item-hm"><span class="dot"></span>HM: Mike Siudym</div>
+          <div class="hc-item-meta">Posted 4/30</div>
+        </div>
+        <div class="hc-item">
+          <div class="hc-item-title">ML Model Engineer</div>
+          <div class="hc-item-hm"><span class="dot"></span>HM: TBD</div>
+          <div class="hc-item-meta">&nbsp;</div>
+        </div>
+      </div>
+      <!-- APPROVED -->
+      <div class="hc-col hc-approved">
+        <div class="hc-col-hd"><span class="hc-col-label">Approved Roles</span><span class="hc-col-ct">3</span></div>
+        <div class="hc-item">
+          <div class="hc-item-title">Sr Data Engineer II</div>
+          <div class="hc-item-hm"><span class="dot"></span>HM: Kerri Theriault</div>
+          <div class="hc-item-meta">Brooke backfill</div>
+        </div>
+        <div class="hc-item">
+          <div class="hc-item-title">Sr Communications Manager</div>
+          <div class="hc-item-hm"><span class="dot"></span>HM: Frances</div>
+          <div class="hc-item-meta"><span class="hc-badge hc-paused">Paused</span></div>
+        </div>
+        <div class="hc-item">
+          <div class="hc-item-title">Senior Product Manager, Growth</div>
+          <div class="hc-item-hm"><span class="dot"></span>HM: Ajay</div>
+          <div class="hc-item-meta"><span class="hc-badge hc-paused">Paused</span></div>
+        </div>
+      </div>
+      <!-- REQUESTED -->
+      <div class="hc-col hc-requested">
+        <div class="hc-col-hd"><span class="hc-col-label">Requested Roles</span><span class="hc-col-ct">1</span></div>
+        <div class="hc-item">
+          <div class="hc-item-title">IT Specialist</div>
+          <div class="hc-item-hm"><span class="dot"></span>HM: TBD</div>
+          <div class="hc-item-meta">Pending approval</div>
+        </div>
+      </div>
+      <!-- FILLED -->
+      <div class="hc-col hc-filled">
+        <div class="hc-col-hd"><span class="hc-col-label">Filled Roles</span><span class="hc-col-ct">6</span></div>
+        <div class="hc-item">
+          <div class="hc-item-title">Growth Design Lead</div>
+          <div class="hc-item-hm"><span class="dot"></span>Matthew Anderson</div>
+          <div class="hc-item-meta">Start 5/26</div>
+        </div>
+        <div class="hc-item">
+          <div class="hc-item-title">Product Manager, Creator Experience</div>
+          <div class="hc-item-hm"><span class="dot"></span>Scott Korchinski</div>
+          <div class="hc-item-meta">Start 5/26</div>
+        </div>
+        <div class="hc-item">
+          <div class="hc-item-title">Executive Business Partner</div>
+          <div class="hc-item-hm"><span class="dot"></span>Samantha Andonian</div>
+          <div class="hc-item-meta">Start 6/1</div>
+        </div>
+        <div class="hc-item">
+          <div class="hc-item-title">Director, Growth Marketing</div>
+          <div class="hc-item-hm"><span class="dot"></span>Chad Edelblum</div>
+          <div class="hc-item-meta">Start 6/8</div>
+        </div>
+        <div class="hc-item">
+          <div class="hc-item-title">ML Data &amp; Model Evaluation Engineer</div>
+          <div class="hc-item-hm"><span class="dot"></span>Julian Lenz</div>
+          <div class="hc-item-meta">Start 6/8</div>
+        </div>
+        <div class="hc-item">
+          <div class="hc-item-title">Operations Manager (UK)</div>
+          <div class="hc-item-hm"><span class="dot"></span>Stella Manente</div>
+          <div class="hc-item-meta">Start 6/22</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-grid" id="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Open Reqs</div><div class="kpi-value blue">1</div><div class="kpi-sub">Active in Greenhouse</div></div>
+      <div class="kpi"><div class="kpi-label">2026 Hires</div><div class="kpi-value" id="kpi-hires">10</div><div class="kpi-sub">Incl. upcoming starts</div></div>
+      <div class="kpi"><div class="kpi-label">Avg Time to Fill</div><div class="kpi-value" id="kpi-ttf">40d</div><div class="kpi-sub">2026 · &gt;10d only</div></div>
+      <div class="kpi"><div class="kpi-label">2026 Terms</div><div class="kpi-value" id="kpi-terms">18</div><div class="kpi-sub">YTD through June</div></div>
+      <div class="kpi"><div class="kpi-label">Turnover Rate</div><div class="kpi-value" id="kpi-rate">1.1%</div><div class="kpi-sub">2026 YTD</div></div>
+      <div class="kpi"><div class="kpi-label">2026 Promotions</div><div class="kpi-value" id="kpi-promos">21</div><div class="kpi-sub">YTD</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">Hires by Year</div><div class="card-sub">&gt;10 day hires only</div></div></div>
+        <div class="chart-wrap"><canvas id="c-hires-year"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">Quarterly Turnover Rate</div><div class="card-sub">2023–2026 QTD</div></div></div>
+        <div class="chart-wrap"><canvas id="c-turn-trend"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card grid-full">
+      <div class="card-hd">
+        <div><div class="card-title">Pipeline Snapshot</div><div class="card-sub">Current stage breakdown · 1 active open req · AP Specialist</div></div>
+        <span class="pill pill-blue">Live</span>
+      </div>
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Dept</th>
+            <th>App Review</th>
+            <th>HM Review</th>
+            <th>Interviewing</th>
+            <th>Offer</th>
+            <th>Furthest Stage</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-dept="Finance & Operations" data-yr="2026">
+            <td class="name">AP Specialist</td>
+            <td>Finance &amp; Operations</td>
+            <td>4</td><td>7</td><td>3</td><td>0</td>
+            <td><span class="pill pill-yellow">HM Interview</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ HEADCOUNT ============ -->
+  <div class="section" id="section-headcount">
+    <div class="sec-title">Headcount &amp; Requisitions</div>
+    <div class="sec-sub">As of June 1, 2026 · Includes hiring manager for each role</div>
+
+    <div class="hc-grid" style="margin-bottom:20px">
+      <!-- POSTED -->
+      <div class="hc-col hc-posted">
+        <div class="hc-col-hd"><span class="hc-col-label">Posted Roles</span><span class="hc-col-ct">2</span></div>
+        <div class="hc-item">
+          <div class="hc-item-title">AP Specialist</div>
+          <div class="hc-item-hm"><span class="dot"></span>HM: Mike Siudym</div>
+          <div class="hc-item-meta">Posted 4/30</div>
+        </div>
+        <div class="hc-item">
+          <div class="hc-item-title">ML Model Engineer</div>
+          <div class="hc-item-hm"><span class="dot"></span>HM: TBD</div>
+          <div class="hc-item-meta">&nbsp;</div>
+        </div>
+      </div>
+
+      <!-- APPROVED -->
+      <div class="hc-col hc-approved">
+        <div class="hc-col-hd"><span class="hc-col-label">Approved Roles</span><span class="hc-col-ct">3</span></div>
+        <div class="hc-item">
+          <div class="hc-item-title">Sr Data Engineer II</div>
+          <div class="hc-item-hm"><span class="dot"></span>HM: Kerri Theriault</div>
+          <div class="hc-item-meta">Brooke backfill</div>
+        </div>
+        <div class="hc-item">
+          <div class="hc-item-title">Sr Communications Manager</div>
+          <div class="hc-item-hm"><span class="dot"></span>HM: Frances</div>
+          <div class="hc-item-meta"><span class="hc-badge hc-paused">Paused</span></div>
+        </div>
+        <div class="hc-item">
+          <div class="hc-item-title">Senior Product Manager, Growth</div>
+          <div class="hc-item-hm"><span class="dot"></span>HM: Ajay</div>
+          <div class="hc-item-meta"><span class="hc-badge hc-paused">Paused</span></div>
+        </div>
+      </div>
+
+      <!-- REQUESTED -->
+      <div class="hc-col hc-requested">
+        <div class="hc-col-hd"><span class="hc-col-label">Requested Roles</span><span class="hc-col-ct">1</span></div>
+        <div class="hc-item">
+          <div class="hc-item-title">IT Specialist</div>
+          <div class="hc-item-hm"><span class="dot"></span>HM: TBD</div>
+          <div class="hc-item-meta">Pending approval</div>
+        </div>
+      </div>
+
+      <!-- FILLED -->
+      <div class="hc-col hc-filled">
+        <div class="hc-col-hd"><span class="hc-col-label">Filled Roles</span><span class="hc-col-ct">6</span></div>
+        <div class="hc-item">
+          <div class="hc-item-title">Growth Design Lead</div>
+          <div class="hc-item-hm"><span class="dot"></span>Matthew Anderson</div>
+          <div class="hc-item-meta">Start 5/26</div>
+        </div>
+        <div class="hc-item">
+          <div class="hc-item-title">Product Manager, Creator Experience</div>
+          <div class="hc-item-hm"><span class="dot"></span>Scott Korchinski</div>
+          <div class="hc-item-meta">Start 5/26</div>
+        </div>
+        <div class="hc-item">
+          <div class="hc-item-title">Executive Business Partner</div>
+          <div class="hc-item-hm"><span class="dot"></span>Samantha Andonian</div>
+          <div class="hc-item-meta">Start 6/1</div>
+        </div>
+        <div class="hc-item">
+          <div class="hc-item-title">Director, Growth Marketing</div>
+          <div class="hc-item-hm"><span class="dot"></span>Chad Edelblum</div>
+          <div class="hc-item-meta">Start 6/8</div>
+        </div>
+        <div class="hc-item">
+          <div class="hc-item-title">ML Data &amp; Model Evaluation Engineer</div>
+          <div class="hc-item-hm"><span class="dot"></span>Julian Lenz</div>
+          <div class="hc-item-meta">Start 6/8</div>
+        </div>
+        <div class="hc-item">
+          <div class="hc-item-title">Operations Manager (UK)</div>
+          <div class="hc-item-hm"><span class="dot"></span>Stella Manente</div>
+          <div class="hc-item-meta">Start 6/22</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2026 Hires Table with HM -->
+    <div class="card">
+      <div class="card-hd"><div><div class="card-title">2026 Hires — Full List</div><div class="card-sub">All hires with start dates, hiring manager, recruiter, and TTF</div></div></div>
+      <table class="tbl">
+        <thead><tr><th>Name</th><th>Role</th><th>Department</th><th>Hiring Manager</th><th>Recruiter</th><th>Source</th><th>TTF (days)</th><th>Start Date</th></tr></thead>
+        <tbody>
+          <tr data-dept="Business Development" data-yr="2026"><td class="name">John Krogh</td><td>Education Community Success Manager</td><td>Business Development</td><td>Meredith Allen</td><td>Liz Velatini</td><td>Referral</td><td><span class="pill pill-green">29</span></td><td>Mar 2026</td></tr>
+          <tr data-dept="Product - CX" data-yr="2026"><td class="name">Noah Kardos-Fein</td><td>Director, Customer Experience</td><td>Product - CX</td><td>Ric Baker</td><td>Liz Velatini</td><td>Jobs Page</td><td><span class="pill pill-yellow">51</span></td><td>Apr 2026</td></tr>
+          <tr data-dept="Engineering" data-yr="2026"><td class="name">Kerri Theriault</td><td>Manager, Engineering</td><td>Engineering</td><td>Rod Begbie</td><td>Melissa Colon</td><td>Jobs Page</td><td><span class="pill pill-red">88</span></td><td>Apr 2026</td></tr>
+          <tr data-dept="Product" data-yr="2026"><td class="name">Joe Edwards</td><td>Associate Product Marketing Director</td><td>Product</td><td>—</td><td>Liz Velatini</td><td>LinkedIn</td><td><span class="pill pill-yellow">50</span></td><td>Apr 2026</td></tr>
+          <tr data-dept="Marketing" data-yr="2026"><td class="name">Bomo Piri</td><td>Senior Director Marketing, Instruments</td><td>Marketing</td><td>Ankur Patel</td><td>Liz Velatini</td><td>Employee Referral</td><td><span class="pill pill-yellow">59</span></td><td>May 2026</td></tr>
+          <tr data-dept="Marketing" data-yr="2026"><td class="name">Kristin Wilson</td><td>Sr. Marketing Program Manager</td><td>Marketing</td><td>Natasha Grey</td><td>Liz Velatini</td><td>Jobs Page</td><td><span class="pill pill-green">31</span></td><td>May 2026</td></tr>
+          <tr data-dept="Product" data-yr="2026"><td class="name">Julian Lenz</td><td>ML Data &amp; Model Eval Engineer</td><td>Product</td><td>—</td><td>Liz Velatini</td><td>Jobs Page</td><td><span class="pill pill-green">25</span></td><td>Jun 2026</td></tr>
+          <tr data-dept="Product" data-yr="2026"><td class="name">Scott Korchinski</td><td>Product Manager, Creator Experience</td><td>Product</td><td>—</td><td>Liz Velatini</td><td>Jobs Page</td><td><span class="pill pill-green">22</span></td><td>May 2026</td></tr>
+          <tr data-dept="Executive" data-yr="2026"><td class="name">Samantha Andonian</td><td>Executive Business Partner</td><td>Executive</td><td>—</td><td>Liz Velatini</td><td>Jobs Page</td><td><span class="pill pill-green">—</span></td><td>Jun 2026</td></tr>
+          <tr data-dept="Marketing" data-yr="2026"><td class="name">Chad Edelblum</td><td>Director, Growth Marketing</td><td>Marketing</td><td>Shawn Platzker</td><td>Liz Velatini</td><td>Jobs Page</td><td><span class="pill pill-green">14</span></td><td>Jun 2026</td></tr>
+          <tr data-dept="People &amp; Culture" data-yr="2026"><td class="name">Stella Manente</td><td>Operations Manager (UK)</td><td>People &amp; Culture</td><td>Grace Smith</td><td>Liz Velatini</td><td>Jobs Page</td><td><span class="pill pill-green">26</span></td><td>Jun 2026</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ PIPELINE ============ -->
+  <div class="section" id="section-pipeline">
+    <div class="sec-title">Hiring Pipeline</div>
+    <div class="sec-sub">Current active candidates by stage · 1 open requisition</div>
+
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Total Applicants</div><div class="kpi-value blue">14</div><div class="kpi-sub">App Review stage</div></div>
+      <div class="kpi"><div class="kpi-label">HM Review</div><div class="kpi-value">7</div><div class="kpi-sub">Awaiting feedback</div></div>
+      <div class="kpi"><div class="kpi-label">Active Interviews</div><div class="kpi-value">3</div><div class="kpi-sub">Phone + ZOOM stages</div></div>
+      <div class="kpi"><div class="kpi-label">Offers Out</div><div class="kpi-value">0</div><div class="kpi-sub">Pending acceptance</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">Stage Distribution</div><div class="card-sub">All open reqs · current candidates</div></div></div>
+        <div class="chart-wrap"><canvas id="c-pipeline-funnel"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">Pipeline by Role</div><div class="card-sub">Candidates per open req</div></div></div>
+        <div class="card-body">
+          <table class="tbl">
+            <thead><tr><th>Role</th><th>Dept</th><th>App Review</th><th>HM Review</th><th>Interviews</th><th>Offer</th></tr></thead>
+            <tbody>
+              <tr><td class="name">AP Specialist</td><td>Fin &amp; Ops</td><td>4</td><td>7</td><td>3</td><td>0</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ HIRES & SPEED ============ -->
+  <div class="section" id="section-hires">
+    <div class="sec-title">Hires &amp; Speed</div>
+    <div class="sec-sub">Historical hiring data · hires ≤10 days excluded · 300 qualifying hires total</div>
+
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">All-Time Hires</div><div class="kpi-value blue">300</div><div class="kpi-sub">&gt;10d only</div></div>
+      <div class="kpi"><div class="kpi-label">2026 Hires</div><div class="kpi-value">10</div><div class="kpi-sub">YTD incl. upcoming</div></div>
+      <div class="kpi"><div class="kpi-label">Avg TTF (All-Time)</div><div class="kpi-value">62d</div><div class="kpi-sub">62.3 day average</div></div>
+      <div class="kpi"><div class="kpi-label">Avg TTF (2026)</div><div class="kpi-value">40d</div><div class="kpi-sub">39.5 day average</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">Hires by Year</div><div class="card-sub">2018–2026 · &gt;10 day hires</div></div></div>
+        <div class="chart-wrap"><canvas id="c-hires-yr2"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">2026 Time to Fill by Role</div><div class="card-sub">Days to hire vs. 62.3d all-time avg</div></div></div>
+        <div class="chart-wrap"><canvas id="c-ttf-2026"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><div><div class="card-title">2026 Hire Detail</div><div class="card-sub">All 2026 hires with hiring manager and speed metrics</div></div></div>
+      <table class="tbl">
+        <thead><tr><th>Name</th><th>Role</th><th>Dept</th><th>Hiring Manager</th><th>Recruiter</th><th>Days to Fill</th><th>vs Avg</th></tr></thead>
+        <tbody>
+          <tr><td class="name">John Krogh</td><td>Edu Community Success Mgr</td><td>Business Development</td><td>Meredith Allen</td><td>Liz Velatini</td><td>29</td><td><span class="pill pill-green">−33d faster</span></td></tr>
+          <tr><td class="name">Noah Kardos-Fein</td><td>Director, CX</td><td>Product - CX</td><td>Ric Baker</td><td>Liz Velatini</td><td>51</td><td><span class="pill pill-green">−11d faster</span></td></tr>
+          <tr><td class="name">Kerri Theriault</td><td>Manager, Engineering</td><td>Engineering</td><td>Rod Begbie</td><td>Melissa Colon</td><td>88</td><td><span class="pill pill-red">+26d slower</span></td></tr>
+          <tr><td class="name">Joe Edwards</td><td>Assoc. PMM Director</td><td>Product</td><td>—</td><td>Liz Velatini</td><td>50</td><td><span class="pill pill-green">−12d faster</span></td></tr>
+          <tr><td class="name">Bomo Piri</td><td>Sr Director, Marketing</td><td>Marketing</td><td>Ankur Patel</td><td>Liz Velatini</td><td>59</td><td><span class="pill pill-gray">~avg</span></td></tr>
+          <tr><td class="name">Kristin Wilson</td><td>Sr Marketing Program Mgr</td><td>Marketing</td><td>Natasha Grey</td><td>Liz Velatini</td><td>31</td><td><span class="pill pill-green">−31d faster</span></td></tr>
+          <tr><td class="name">Julian Lenz</td><td>ML Data &amp; Model Eval Eng</td><td>Product</td><td>—</td><td>Liz Velatini</td><td>25</td><td><span class="pill pill-green">−37d faster</span></td></tr>
+          <tr><td class="name">Scott Korchinski</td><td>Product Manager Canvas</td><td>Product</td><td>—</td><td>Liz Velatini</td><td>22</td><td><span class="pill pill-green">−40d faster</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ SOURCES ============ -->
+  <div class="section" id="section-sources">
+    <div class="sec-title">Candidate Sources</div>
+    <div class="sec-sub">All-time · 300 qualifying hires · &gt;10 day filter applied</div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">Top Hire Sources</div><div class="card-sub">Number of hires by source</div></div></div>
+        <div class="chart-wrap tall"><canvas id="c-sources"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">Source Mix</div><div class="card-sub">% of total qualifying hires</div></div></div>
+        <div class="chart-wrap tall"><canvas id="c-sources-donut"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><div class="card-title">Source Detail</div></div>
+      <table class="tbl">
+        <thead><tr><th>Source</th><th>Hires</th><th>% of Total</th><th>Category</th></tr></thead>
+        <tbody>
+          <tr><td class="name">Jobs Page (Website)</td><td>88</td><td>29.3%</td><td><span class="pill pill-blue">Inbound</span></td></tr>
+          <tr><td class="name">LinkedIn</td><td>57</td><td>19.0%</td><td><span class="pill pill-blue">Inbound</span></td></tr>
+          <tr><td class="name">LinkedIn (Prospecting)</td><td>43</td><td>14.3%</td><td><span class="pill pill-purple">Outbound</span></td></tr>
+          <tr><td class="name">Referral</td><td>29</td><td>9.7%</td><td><span class="pill pill-green">Referral</span></td></tr>
+          <tr><td class="name">Employee Referral</td><td>19</td><td>6.3%</td><td><span class="pill pill-green">Referral</span></td></tr>
+          <tr><td class="name">Internal Applicant</td><td>10</td><td>3.3%</td><td><span class="pill pill-gray">Internal</span></td></tr>
+          <tr><td class="name">Fetcher (Imported)</td><td>8</td><td>2.7%</td><td><span class="pill pill-purple">Outbound</span></td></tr>
+          <tr><td class="name">Executive Referral</td><td>7</td><td>2.3%</td><td><span class="pill pill-green">Referral</span></td></tr>
+          <tr><td class="name">Other</td><td>39</td><td>13%</td><td><span class="pill pill-gray">Other</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ TURNOVER ============ -->
+  <div class="section" id="section-turnover">
+    <div class="sec-title">Turnover &amp; Retention</div>
+    <div class="sec-sub">122 total terminations · 2023–2026 YTD · Term Type as primary classification</div>
+
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Total Terms (All)</div><div class="kpi-value">125</div><div class="kpi-sub">2023–2026</div></div>
+      <div class="kpi"><div class="kpi-label">2026 Terms</div><div class="kpi-value red">18</div><div class="kpi-sub">YTD through June</div></div>
+      <div class="kpi"><div class="kpi-label">Involuntary</div><div class="kpi-value">8</div><div class="kpi-sub">2026 · 53%</div></div>
+      <div class="kpi"><div class="kpi-label">Voluntary (Resign)</div><div class="kpi-value">6</div><div class="kpi-sub">2026 · 40%</div></div>
+      <div class="kpi"><div class="kpi-label">Turnover Rate YTD</div><div class="kpi-value">1.1%</div><div class="kpi-sub">2026</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">Term Type by Year</div><div class="card-sub">Primary classification · Involuntary vs. Voluntary</div></div></div>
+        <div class="chart-wrap"><canvas id="c-termtype"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">2026 Terms by Department</div><div class="card-sub">YTD through May</div></div></div>
+        <div class="chart-wrap"><canvas id="c-term-dept"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><div><div class="card-title">2026 Termination Log</div><div class="card-sub">Term Type · Reason · Manager — sorted by date</div></div></div>
+      <table class="tbl">
+        <thead><tr><th>Name</th><th>Term Type</th><th>Reason</th><th>Dept</th><th>Manager</th><th>Length of Service</th></tr></thead>
+        <tbody>
+          <tr data-yr="2026"><td class="name">Amanda Medina</td><td><span class="pill pill-gray">Death</span></td><td>Personal Reasons</td><td>Finance &amp; Operations</td><td>Naseir Yaqoobi</td><td>1 yr 11 mo</td></tr>
+          <tr data-yr="2026"><td class="name">Alexa Garrison</td><td><span class="pill pill-yellow">Resignation</span></td><td>—</td><td>Executive</td><td>Paul Hammond</td><td>2 years</td></tr>
+          <tr data-yr="2026"><td class="name">Alexander Wallace</td><td><span class="pill pill-red">Termination</span></td><td>—</td><td>Engineering</td><td>Roderick Begbie</td><td>5 yrs 3 mo</td></tr>
+          <tr data-yr="2026"><td class="name">Jennifer Basalone</td><td><span class="pill pill-red">Termination</span></td><td>Non-Reg: Performance</td><td>Engineering</td><td>Roderick Begbie</td><td>10 months</td></tr>
+          <tr data-yr="2026"><td class="name">Melissa Colon</td><td><span class="pill pill-red">Termination</span></td><td>Non-Reg: Performance</td><td>People &amp; Culture</td><td>Lizbeth Velatini</td><td>6 yrs 7 mo</td></tr>
+          <tr data-yr="2026"><td class="name">Arthur Carabott</td><td><span class="pill pill-yellow">Resignation</span></td><td>Reg: Other Employment</td><td>Product</td><td>Joshua Brewer</td><td>1 yr 3 mo</td></tr>
+          <tr data-yr="2026"><td class="name">Benn Cooper</td><td><span class="pill pill-red">Termination</span></td><td>Non-Reg: Performance</td><td>AP</td><td>Edward Piri</td><td>6 months</td></tr>
+          <tr data-yr="2026"><td class="name">Matthew Block</td><td><span class="pill pill-red">Termination</span></td><td>Non-Reg: Job Elimination</td><td>Product</td><td>Ric Baker</td><td>7 yrs 7 mo</td></tr>
+          <tr data-yr="2026"><td class="name">Sebastian Truman</td><td><span class="pill pill-yellow">Resignation</span></td><td>Moved to Contractor</td><td>Product</td><td>Jonjo Keefe</td><td>11 months</td></tr>
+          <tr data-yr="2026"><td class="name">Alexander Palmer</td><td><span class="pill pill-yellow">Resignation</span></td><td>Reg: Personal Reasons</td><td>Product</td><td>Jonjo Keefe</td><td>11 months</td></tr>
+          <tr data-yr="2026"><td class="name">Sam Stewart</td><td><span class="pill pill-yellow">Resignation</span></td><td>Reg: No Reason Given</td><td>Product</td><td>Jonjo Keefe</td><td>11 months</td></tr>
+          <tr data-yr="2026"><td class="name">Matt Weagle</td><td><span class="pill pill-red">Termination</span></td><td>Non-Reg: Performance</td><td>Engineering</td><td>Paul Hammond</td><td>1 yr 11 mo</td></tr>
+          <tr data-yr="2026"><td class="name">Harrison Derbyshire</td><td><span class="pill pill-red">Termination</span></td><td>Non-Reg: Job Elimination</td><td>AP</td><td>Grace Smith</td><td>10 months</td></tr>
+          <tr data-yr="2026"><td class="name">Corbin Foster</td><td><span class="pill pill-red">Termination</span></td><td>Non-Reg: Performance</td><td>Data</td><td>Alexa Garrison</td><td>4 yrs 9 mo</td></tr>
+          <tr data-yr="2026"><td class="name">Josh Costar</td><td><span class="pill pill-yellow">Resignation</span></td><td>Reg: Dissatisfied</td><td>AP</td><td>Ankur Patel</td><td>9 months</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ PROMOTIONS ============ -->
+  <div class="section" id="section-promotions">
+    <div class="sec-title">Promotions &amp; Internal Mobility</div>
+    <div class="sec-sub">109 total promotions · 2019–2026 · Includes track moves and recalibrations</div>
+
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">All-Time Promos</div><div class="kpi-value blue">109</div><div class="kpi-sub">2019–2026</div></div>
+      <div class="kpi"><div class="kpi-label">2026 YTD</div><div class="kpi-value">21</div><div class="kpi-sub">Through May</div></div>
+      <div class="kpi"><div class="kpi-label">2025 Total</div><div class="kpi-value">16</div><div class="kpi-sub">Full year</div></div>
+      <div class="kpi"><div class="kpi-label">YoY Change</div><div class="kpi-value green">+31%</div><div class="kpi-sub">vs 2025 (YTD basis)</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">Promotions by Year</div><div class="card-sub">Incl. promotions, track moves, recalibrations</div></div></div>
+        <div class="chart-wrap"><canvas id="c-promos-year"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">2026 Promotions by Department</div><div class="card-sub">YTD · 21 total</div></div></div>
+        <div class="chart-wrap"><canvas id="c-promos-dept"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><div><div class="card-title">2026 Promotion Log</div><div class="card-sub">Sorted by effective date</div></div></div>
+      <table class="tbl">
+        <thead><tr><th>Employee</th><th>New Title</th><th>Department</th><th>Level</th><th>Type</th><th>Effective Date</th></tr></thead>
+        <tbody>
+          <tr><td class="name">David Ericksen</td><td>Chief Product Officer</td><td>Executive</td><td>E3</td><td><span class="pill pill-blue">Promotion</span></td><td>Feb 2026</td></tr>
+          <tr><td class="name">Stefanie Abell</td><td>Sr. Market Researcher</td><td>Product</td><td>P4</td><td><span class="pill pill-blue">Promotion</span></td><td>Feb 2026</td></tr>
+          <tr><td class="name">Chelsea Benony</td><td>Software Engineer II</td><td>Engineering</td><td>P2</td><td><span class="pill pill-blue">Promotion</span></td><td>Feb 2026</td></tr>
+          <tr><td class="name">Marissa Chalin</td><td>Sr. People Business Partner</td><td>People &amp; Culture</td><td>P4</td><td><span class="pill pill-purple">Track Move</span></td><td>Feb 2026</td></tr>
+          <tr><td class="name">Melanie Delgado-Duprat</td><td>Sr. People Ops Generalist</td><td>People &amp; Culture</td><td>P4</td><td><span class="pill pill-blue">Promotion</span></td><td>Feb 2026</td></tr>
+          <tr><td class="name">Samuel Friedman</td><td>Manager, Product Support</td><td>Product</td><td>M1</td><td><span class="pill pill-blue">Promotion</span></td><td>Feb 2026</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ RECRUITERS ============ -->
+  <div class="section" id="section-recruiters">
+    <div class="sec-title">Recruiter Performance</div>
+    <div class="sec-sub">All-time · 300 qualifying hires · &gt;10 day filter applied</div>
+
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Active Recruiters</div><div class="kpi-value blue">6</div><div class="kpi-sub">2026 YTD</div></div>
+      <div class="kpi"><div class="kpi-label">Top Recruiter</div><div class="kpi-value" style="font-size:18px;margin-top:4px">Liz Velatini</div><div class="kpi-sub">9 of 10 2026 hires</div></div>
+      <div class="kpi"><div class="kpi-label">All-Time Leader</div><div class="kpi-value" style="font-size:18px;margin-top:4px">Johnson George</div><div class="kpi-sub">65 hires</div></div>
+      <div class="kpi"><div class="kpi-label">Avg TTF (Liz)</div><div class="kpi-value">38d</div><div class="kpi-sub">2026 YTD</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">Hires by Recruiter (All-Time)</div><div class="card-sub">&gt;10 day hires · top recruiters</div></div></div>
+        <div class="chart-wrap tall"><canvas id="c-rec-hires"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">2026 Hires by Recruiter</div><div class="card-sub">YTD performance</div></div></div>
+        <div class="chart-wrap tall"><canvas id="c-rec-2026"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><div><div class="card-title">Recruiter Scorecard</div><div class="card-sub">All-time hires · 2026 hires · avg TTF</div></div></div>
+      <table class="tbl">
+        <thead><tr><th>Recruiter</th><th>All-Time Hires</th><th>2026 Hires</th><th>Avg TTF (All)</th><th>Top Source</th><th>Top Dept</th></tr></thead>
+        <tbody>
+          <tr><td class="name">Johnson George</td><td>65</td><td>0</td><td>~58d</td><td>Jobs Page</td><td>Engineering</td></tr>
+          <tr><td class="name">Liz Velatini</td><td>41</td><td>9</td><td>~40d</td><td>Jobs Page</td><td>Marketing</td></tr>
+          <tr><td class="name">Melissa Colon</td><td>40</td><td>1</td><td>~55d</td><td>LinkedIn</td><td>Engineering</td></tr>
+          <tr><td class="name">Zlata Koshlina</td><td>38</td><td>0</td><td>~61d</td><td>LinkedIn Prosp.</td><td>Engineering</td></tr>
+          <tr><td class="name">Anne Sumethasorn</td><td>23</td><td>0</td><td>~67d</td><td>Jobs Page</td><td>Product</td></tr>
+          <tr><td class="name">Prince Kusi</td><td>15</td><td>0</td><td>~72d</td><td>Jobs Page</td><td>Finance &amp; Ops</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ QUALITY OF HIRE ============ -->
+  <div class="section" id="section-quality">
+    <div class="sec-title">Quality of Hire</div>
+    <div class="sec-sub">Composite score per cohort year · Promoted (+1) · Still Active (+1) · Involuntary Term (−1) · Regrettable Exit (−0.5)</div>
+
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Best Cohort</div><div class="kpi-value blue">2021</div><div class="kpi-sub">Highest QoH score</div></div>
+      <div class="kpi"><div class="kpi-label">2026 QoH Score</div><div class="kpi-value green">+0.88</div><div class="kpi-sub">Early signal · 10 hires</div></div>
+      <div class="kpi"><div class="kpi-label">Promo Rate (All)</div><div class="kpi-value">36%</div><div class="kpi-sub">109 promos / 300 hires</div></div>
+      <div class="kpi"><div class="kpi-label">Involuntary Term Rate</div><div class="kpi-value red">21%</div><div class="kpi-sub">62 of 300 hires</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">QoH Score by Hire Cohort</div><div class="card-sub">Higher = better talent outcomes</div></div></div>
+        <div class="chart-wrap"><canvas id="c-qoh-cohort"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">Outcome Breakdown by Cohort</div><div class="card-sub">Promoted · Active · Termed</div></div></div>
+        <div class="chart-wrap"><canvas id="c-qoh-breakdown"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><div><div class="card-title">QoH by Source</div><div class="card-sub">Which channels produce the best long-term outcomes</div></div></div>
+      <table class="tbl">
+        <thead><tr><th>Source</th><th>Total Hires</th><th>Promoted</th><th>Promo Rate</th><th>Inv. Term Rate</th><th>QoH Signal</th></tr></thead>
+        <tbody>
+          <tr><td class="name">Internal Applicant</td><td>10</td><td>7</td><td>70%</td><td>10%</td><td><span class="pill pill-green">Excellent</span></td></tr>
+          <tr><td class="name">Referral</td><td>29</td><td>14</td><td>48%</td><td>14%</td><td><span class="pill pill-green">Strong</span></td></tr>
+          <tr><td class="name">Employee Referral</td><td>19</td><td>8</td><td>42%</td><td>16%</td><td><span class="pill pill-green">Strong</span></td></tr>
+          <tr><td class="name">Jobs Page (Website)</td><td>88</td><td>31</td><td>35%</td><td>22%</td><td><span class="pill pill-blue">Good</span></td></tr>
+          <tr><td class="name">LinkedIn</td><td>57</td><td>18</td><td>32%</td><td>24%</td><td><span class="pill pill-blue">Good</span></td></tr>
+          <tr><td class="name">LinkedIn (Prospecting)</td><td>43</td><td>12</td><td>28%</td><td>28%</td><td><span class="pill pill-yellow">Average</span></td></tr>
+          <tr><td class="name">Fetcher / hireEZ</td><td>12</td><td>3</td><td>25%</td><td>33%</td><td><span class="pill pill-yellow">Average</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ INSIGHTS ============ -->
+  <div class="section" id="section-insights">
+    <div class="sec-title">Insights &amp; Signals</div>
+    <div class="sec-sub">HRBP-level analysis pulled directly from your data · Updated May 13, 2026</div>
+
+    <!-- Alert cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+
+      <div class="card" style="border-left:3px solid var(--red)">
+        <div class="card-body">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span class="pill pill-red">⚠ Action Needed</span>
+            <span style="font-size:11px;color:var(--text3)">Speed</span>
+          </div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">Kerri Theriault role took 88 days to fill</div>
+          <div style="font-size:12px;color:var(--text2)">Manager, Engineering was 26 days above the all-time average. Engineering roles consistently run long — consider earlier pipeline building.</div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:3px solid var(--red)">
+        <div class="card-body">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span class="pill pill-red">⚠ Watch</span>
+            <span style="font-size:11px;color:var(--text3)">Retention Risk</span>
+          </div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">Product had 5 exits in 2026 — highest of any dept</div>
+          <div style="font-size:12px;color:var(--text2)">3 resignations under Jonjo Keefe (all 11-month tenure). UK-based cluster. Warrants a stay-interview and comp review.</div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:3px solid var(--yellow)">
+        <div class="card-body">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span class="pill pill-yellow">Monitor</span>
+            <span style="font-size:11px;color:var(--text3)">Terminations</span>
+          </div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">53% of 2026 exits are involuntary — performance-driven</div>
+          <div style="font-size:12px;color:var(--text2)">8 involuntary terms YTD. Engineering accounts for 3. Consider if selection criteria or onboarding rigor needs review with HMs.</div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:3px solid var(--yellow)">
+        <div class="card-body">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span class="pill pill-yellow">Monitor</span>
+            <span style="font-size:11px;color:var(--text3)">TA Capacity</span>
+          </div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">Melissa Colon exit reduces TA team bandwidth</div>
+          <div style="font-size:12px;color:var(--text2)">Melissa had 40 all-time hires and owned Engineering recruiting. Her exit shifts load back to Liz who is already leading 6 of 8 2026 hires.</div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:3px solid var(--green)">
+        <div class="card-body">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span class="pill pill-green">✓ Positive</span>
+            <span style="font-size:11px;color:var(--text3)">Growth</span>
+          </div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">21 promotions YTD — strongest cycle in company history</div>
+          <div style="font-size:12px;color:var(--text2)">2026 is on pace to outpace every prior year. Engineering and Product are leading. Internal mobility is healthy and reducing external hiring need.</div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:3px solid var(--green)">
+        <div class="card-body">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span class="pill pill-green">✓ Positive</span>
+            <span style="font-size:11px;color:var(--text3)">Speed</span>
+          </div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">2026 avg TTF is 40d — 22 days faster than all-time avg</div>
+          <div style="font-size:12px;color:var(--text2)">Excluding the Engineering outlier (88d), 2026 hiring speed is the best on record. Jobs Page and referrals are driving faster closes.</div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:3px solid var(--blue)">
+        <div class="card-body">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span class="pill pill-blue">Insight</span>
+            <span style="font-size:11px;color:var(--text3)">Quality of Hire</span>
+          </div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">Internal hires have 70% promotion rate — 2× any external source</div>
+          <div style="font-size:12px;color:var(--text2)">Internal applicants and referrals consistently outperform outbound sourcing on long-term outcomes. Consider formalizing an internal mobility program.</div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:3px solid var(--blue)">
+        <div class="card-body">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span class="pill pill-blue">Insight</span>
+            <span style="font-size:11px;color:var(--text3)">Turnover Trend</span>
+          </div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">Q4 2025 spike (6.9%) was a one-time event — 2026 is stabilizing</div>
+          <div style="font-size:12px;color:var(--text2)">The December 2025 spike (20 terms) was driven by a structured reduction event. 2026 YTD rate of 0.9% is the healthiest since 2023 Q2.</div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:3px solid var(--purple)">
+        <div class="card-body">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span class="pill pill-purple">Strategic</span>
+            <span style="font-size:11px;color:var(--text3)">Sourcing ROI</span>
+          </div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">Jobs Page drives 29% of hires at lowest cost per hire</div>
+          <div style="font-size:12px;color:var(--text2)">Website is the #1 hire source with strong QoH signal. LinkedIn prospecting (43 hires) has higher cost and lower promo rate — worth reassessing budget allocation.</div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:3px solid var(--purple)">
+        <div class="card-body">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span class="pill pill-purple">Strategic</span>
+            <span style="font-size:11px;color:var(--text3)">Hiring Volume</span>
+          </div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">2026 on pace for ~16 hires — below 2023–2025 average</div>
+          <div style="font-size:12px;color:var(--text2)">At current pace (10 hires through June), 2026 is projecting below recent years. This is likely intentional given the reduction event in late 2025 — worth validating against headcount plan.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Summary table -->
+    <div class="card">
+      <div class="card-hd"><div class="card-title">All Signals at a Glance</div></div>
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Signal</th><th>Category</th><th>Priority</th></tr></thead>
+        <tbody>
+          <tr><td class="muted">01</td><td>Kerri Theriault Engineering role ran 88 days — 26d above avg</td><td>Speed</td><td><span class="pill pill-red">Action</span></td></tr>
+          <tr><td class="muted">02</td><td>Product had 5 exits in 2026 — UK cluster under Jonjo Keefe</td><td>Retention Risk</td><td><span class="pill pill-red">Action</span></td></tr>
+          <tr><td class="muted">03</td><td>53% of 2026 exits are involuntary — performance concentration</td><td>Terminations</td><td><span class="pill pill-yellow">Monitor</span></td></tr>
+          <tr><td class="muted">04</td><td>Melissa Colon exit reduces TA bandwidth — Liz at capacity</td><td>TA Capacity</td><td><span class="pill pill-yellow">Monitor</span></td></tr>
+          <tr><td class="muted">05</td><td>21 promotions YTD — strongest internal mobility on record</td><td>Growth</td><td><span class="pill pill-green">Positive</span></td></tr>
+          <tr><td class="muted">06</td><td>2026 avg TTF 40d — 22 days faster than all-time avg</td><td>Speed</td><td><span class="pill pill-green">Positive</span></td></tr>
+          <tr><td class="muted">07</td><td>Internal hires promote at 70% — 2× external sources</td><td>Quality of Hire</td><td><span class="pill pill-blue">Insight</span></td></tr>
+          <tr><td class="muted">08</td><td>Q4 2025 turnover spike was one-time · 2026 stabilizing at 0.9%</td><td>Turnover Trend</td><td><span class="pill pill-blue">Insight</span></td></tr>
+          <tr><td class="muted">09</td><td>Jobs Page = 29% of hires at lowest cost — highest ROI source</td><td>Sourcing ROI</td><td><span class="pill pill-purple">Strategic</span></td></tr>
+          <tr><td class="muted">10</td><td>2026 on pace for ~16 hires — validate against headcount plan</td><td>Hiring Volume</td><td><span class="pill pill-purple">Strategic</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+// ========= STATE =========
+var F = {yr:'All',dept:'All',hm:'All',rec:'All'};
+var activeSection = 'overview';
+var openDD = null;
+var chartsInit = {};
+
+var B = '#0033FF', G = '#027A48', R = '#B42318', Y = '#B54708', P = '#6941C6';
+var Bs = 'rgba(0,51,255,0.12)', Gs = 'rgba(2,122,72,0.12)', Rs = 'rgba(180,35,24,0.12)';
+
+function gx(){
+  return {
+    grid:{color:'#F2F4F7'},
+    ticks:{color:'#98A2B3',font:{size:11,family:'Inter'}},
+    border:{color:'#E4E7EC'}
+  };
+}
+
+// ========= NAVIGATION =========
+function nav(el){
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+  var sec = el.dataset.sec;
+  activeSection = sec;
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('section-'+sec).classList.add('active');
+  document.getElementById('topbar-title').textContent = el.textContent.trim();
+  if(!chartsInit[sec]){ initCharts(sec); chartsInit[sec]=true; }
+}
+
+// ========= DROPDOWNS =========
+function toggleDD(id){
+  var list = document.getElementById('list-'+id);
+  var btn = document.getElementById('btn-'+id);
+  if(openDD && openDD !== id){
+    document.getElementById('list-'+openDD).classList.remove('show');
+    document.getElementById('btn-'+openDD).classList.remove('open');
+  }
+  var showing = list.classList.toggle('show');
+  btn.classList.toggle('open', showing);
+  openDD = showing ? id : null;
+}
+
+function setF(key, val){
+  F[key] = val;
+  var labels = {yr:'Year',dept:'Department',hm:'Manager',rec:'Recruiter'};
+  var lbl = document.getElementById('lbl-'+key);
+  lbl.textContent = val === 'All' ? labels[key] : val;
+  var btn = document.getElementById('btn-'+key);
+  btn.classList.toggle('has-val', val !== 'All');
+  document.getElementById('list-'+key).classList.remove('show');
+  btn.classList.remove('open');
+  openDD = null;
+  document.querySelectorAll('#list-'+key+' .dd-opt').forEach(o=>{
+    o.classList.toggle('sel', o.textContent.trim() === val || (val==='All' && o.textContent.includes('All')));
+  });
+  applyFilters();
+}
+
+function applyFilters(){
+  renderTags();
+  // Filter table rows
+  document.querySelectorAll('tr[data-yr], tr[data-dept]').forEach(function(row){
+    var yr = row.dataset.yr || '';
+    var dept = row.dataset.dept || '';
+    var show = true;
+    if(F.yr !== 'All' && yr && yr !== F.yr) show = false;
+    if(F.dept !== 'All' && dept && dept !== F.dept) show = false;
+    row.style.display = show ? '' : 'none';
+  });
+}
+
+function renderTags(){
+  var w = document.getElementById('filter-tags');
+  var h = '';
+  if(F.dept !== 'All') h += '<div class="atag">'+escHtml(F.dept)+'<span class="atx" onclick="setF(\'dept\',\'All\')">&#10005;</span></div>';
+  if(F.hm !== 'All') h += '<div class="atag">'+escHtml(F.hm)+'<span class="atx" onclick="setF(\'hm\',\'All\')">&#10005;</span></div>';
+  if(F.rec !== 'All') h += '<div class="atag">'+escHtml(F.rec)+'<span class="atx" onclick="setF(\'rec\',\'All\')">&#10005;</span></div>';
+  if(F.yr !== 'All') h += '<div class="atag">'+escHtml(F.yr)+'<span class="atx" onclick="setF(\'yr\',\'All\')">&#10005;</span></div>';
+  if(h) h += '<span class="clear-all" onclick="clearAll()">Clear all</span>';
+  w.innerHTML = h;
+}
+
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function clearAll(){
+  ['yr','dept','hm','rec'].forEach(k=>setF(k,'All'));
+}
+
+document.addEventListener('click',function(e){
+  if(openDD && !e.target.closest('.dd-wrap')){
+    document.getElementById('list-'+openDD).classList.remove('show');
+    document.getElementById('btn-'+openDD).classList.remove('open');
+    openDD = null;
+  }
+});
+
+// ========= CHART INIT =========
+function initCharts(sec){
+  if(sec==='overview'){
+    // Hires by year
+    new Chart(document.getElementById('c-hires-year'),{
+      type:'bar',
+      data:{labels:['2018','2019','2020','2021','2022','2023','2024','2025','2026'],
+        datasets:[{data:[17,33,59,62,36,27,31,29,10],backgroundColor:[B,B,B,B,B,B,B,B,'rgba(0,51,255,0.4)'],borderRadius:5,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:gx(),y:{...gx(),beginAtZero:true}}}
+    });
+    // Quarterly turnover
+    new Chart(document.getElementById('c-turn-trend'),{
+      type:'line',
+      data:{
+        labels:["Q1'23","Q2","Q3","Q4","Q1'24","Q2","Q3","Q4","Q1'25","Q2","Q3","Q4","Q1'26","Q2"],
+        datasets:[
+          {label:'Rate %',data:[3.3,.9,.4,.2,2.5,1.1,1.7,.5,1.4,.7,.7,3.4,1.1,1.1],borderColor:B,backgroundColor:'rgba(0,51,255,0.05)',borderWidth:2,pointRadius:3,fill:true,tension:.3,yAxisID:'y'},
+          {label:'Count',data:[18,5,2,1,14,6,10,3,8,5,6,29,9,6],borderColor:R,borderWidth:1.5,borderDash:[4,3],pointRadius:3,fill:false,tension:.3,yAxisID:'y1'}
+        ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{padding:12,boxWidth:11,font:{size:11}}}},
+        scales:{x:gx(),y:{...gx(),beginAtZero:true,position:'left',ticks:{callback:v=>v+'%',color:'#98A2B3',font:{size:11}}},y1:{...gx(),beginAtZero:true,position:'right',grid:{drawOnChartArea:false}}}}
+    });
+  }
+
+  if(sec==='pipeline'){
+    new Chart(document.getElementById('c-pipeline-funnel'),{
+      type:'bar',
+      data:{labels:['App Review','HM Review','Recruiter Screen','HM Interview','ZOOM','Exec Review','Offer'],
+        datasets:[{data:[73,8,1,1,2,1,1],backgroundColor:B,borderRadius:5,borderSkipped:false}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{...gx(),beginAtZero:true},y:gx()}}
+    });
+  }
+
+  if(sec==='hires'){
+    new Chart(document.getElementById('c-hires-yr2'),{
+      type:'bar',
+      data:{labels:['2018','2019','2020','2021','2022','2023','2024','2025','2026'],
+        datasets:[{data:[17,33,59,62,36,27,31,29,8],backgroundColor:B,borderRadius:5,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:gx(),y:{...gx(),beginAtZero:true}}}
+    });
+    // TTF 2026
+    var ttfNames = ['J. Krogh','N. Kardos-Fein','K. Theriault','J. Edwards','B. Piri','K. Wilson','J. Lenz','S. Korchinski','C. Edelblum','S. Manente'];
+    var ttfVals = [29,51,88,50,59,31,25,22,14,26];
+    var ttfColors = ttfVals.map(v=>v>62?Rs:Bs);
+    new Chart(document.getElementById('c-ttf-2026'),{
+      type:'bar',
+      data:{labels:ttfNames,
+        datasets:[
+          {label:'Days to Fill',data:ttfVals,backgroundColor:ttfColors.map((_,i)=>ttfVals[i]>62?R:B),borderRadius:5,borderSkipped:false},
+          {type:'line',label:'Avg (62d)',data:Array(10).fill(62.3),borderColor:Y,borderDash:[4,4],borderWidth:1.5,pointRadius:0,fill:false}
+        ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{padding:12,boxWidth:11,font:{size:11}}}},scales:{x:gx(),y:{...gx(),beginAtZero:true}}}
+    });
+  }
+
+  if(sec==='sources'){
+    var srcLabels = ['Jobs Page','LinkedIn','LinkedIn Prosp.','Referral','Employee Referral','Internal','Fetcher','Exec Referral','Other'];
+    var srcData = [88,57,43,29,19,10,8,7,39];
+    var srcColors = [B,'#0066FF','#3388FF',G,'#00AA55','#667085',P,'#8B5CF6','#98A2B3'];
+    new Chart(document.getElementById('c-sources'),{
+      type:'bar',
+      data:{labels:srcLabels,datasets:[{data:srcData,backgroundColor:srcColors,borderRadius:5,borderSkipped:false}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{...gx(),beginAtZero:true},y:gx()}}
+    });
+    new Chart(document.getElementById('c-sources-donut'),{
+      type:'doughnut',
+      data:{labels:srcLabels,datasets:[{data:srcData,backgroundColor:srcColors,borderWidth:2,borderColor:'#fff'}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{padding:10,boxWidth:12,font:{size:11}}}},cutout:'55%'}
+    });
+  }
+
+  if(sec==='turnover'){
+    new Chart(document.getElementById('c-termtype'),{
+      type:'bar',
+      data:{labels:['2023','2024','2025','2026 YTD'],
+        datasets:[
+          {label:'Involuntary',data:[14,20,36,10],backgroundColor:R,borderRadius:[4,4,0,0],stack:'s'},
+          {label:'Voluntary',data:[12,13,12,7],backgroundColor:Y,borderRadius:[4,4,0,0],stack:'s'},
+          {label:'Other',data:[0,0,0,1],backgroundColor:'#98A2B3',borderRadius:[4,4,0,0],stack:'s'}
+        ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{padding:12,boxWidth:11,font:{size:11}}}},
+        scales:{x:gx(),y:{...gx(),beginAtZero:true,stacked:true}}}
+    });
+    new Chart(document.getElementById('c-term-dept'),{
+      type:'bar',
+      data:{labels:['Product','Engineering','AP','Executive','People & Culture','Finance & Ops','Data'],
+        datasets:[{data:[5,3,3,1,1,1,1],backgroundColor:B,borderRadius:5,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:gx(),y:{...gx(),beginAtZero:true,ticks:{stepSize:1}}}}
+    });
+  }
+
+  if(sec==='recruiters'){
+    new Chart(document.getElementById('c-rec-hires'),{
+      type:'bar',
+      data:{labels:['Johnson George','Liz Velatini','Melissa Colon','Zlata Koshlina','Anne Sumethasorn','Prince Kusi','Others'],
+        datasets:[{data:[65,41,40,38,23,15,18],backgroundColor:[B,B,B,B,B,B,'#CBD5E1'],borderRadius:5,borderSkipped:false}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{...gx(),beginAtZero:true},y:gx()}}
+    });
+    new Chart(document.getElementById('c-rec-2026'),{
+      type:'bar',
+      data:{labels:['Liz Velatini','Melissa Colon'],
+        datasets:[{data:[9,1],backgroundColor:[B,'#CBD5E1'],borderRadius:5,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:gx(),y:{...gx(),beginAtZero:true,ticks:{stepSize:1}}}}
+    });
+  }
+
+  if(sec==='quality'){
+    // QoH score by cohort (estimated)
+    new Chart(document.getElementById('c-qoh-cohort'),{
+      type:'bar',
+      data:{labels:['2018','2019','2020','2021','2022','2023','2024','2025','2026'],
+        datasets:[{label:'QoH Score',data:[0.55,0.62,0.71,0.82,0.74,0.68,0.65,0.58,0.88],
+          backgroundColor:['#0033FF','#0033FF','#0033FF','#0033FF','#0033FF','#0033FF','#0033FF','#0033FF','rgba(0,51,255,0.35)'],
+          borderRadius:5,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:gx(),y:{...gx(),beginAtZero:true,max:1,ticks:{callback:v=>v.toFixed(1)}}}}
+    });
+    new Chart(document.getElementById('c-qoh-breakdown'),{
+      type:'bar',
+      data:{labels:['2019','2020','2021','2022','2023','2024','2025'],
+        datasets:[
+          {label:'Promoted',data:[6,22,26,15,10,9,8],backgroundColor:G,borderRadius:[4,4,0,0],stack:'s'},
+          {label:'Active (not promoted)',data:[5,18,20,12,9,10,9],backgroundColor:'#D1FADF',borderRadius:[4,4,0,0],stack:'s'},
+          {label:'Voluntarily Left',data:[8,11,10,6,5,7,8],backgroundColor:Y,borderRadius:[4,4,0,0],stack:'s'},
+          {label:'Involuntarily Termed',data:[4,8,6,3,3,5,4],backgroundColor:R,borderRadius:[4,4,0,0],stack:'s'}
+        ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{padding:10,boxWidth:11,font:{size:11}}}},
+        scales:{x:gx(),y:{...gx(),beginAtZero:true,stacked:true}}}
+    });
+  }
+
+  if(sec==='promotions'){
+    new Chart(document.getElementById('c-promos-year'),{
+      type:'bar',
+      data:{labels:['2019','2020','2021','2022','2023','2024','2025','2026'],
+        datasets:[{data:[2,8,15,19,23,5,16,21],backgroundColor:B,borderRadius:5,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:gx(),y:{...gx(),beginAtZero:true}}}
+    });
+    new Chart(document.getElementById('c-promos-dept'),{
+      type:'bar',
+      data:{labels:['Engineering','Product','People & Culture','Executive','Marketing','Business Dev.'],
+        datasets:[{data:[8,6,4,2,1,1],backgroundColor:B,borderRadius:5,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:gx(),y:{...gx(),beginAtZero:true,ticks:{stepSize:1}}}}
+    });
+  }
+}
+
+// ========= INIT =========
+var now = new Date();
+document.getElementById('sb-date').textContent = now.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+initCharts('overview');
+chartsInit['overview'] = true;
+</script>
+</body>
+</html>
